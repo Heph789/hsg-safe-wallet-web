@@ -1,19 +1,12 @@
-import React, { useEffect, type ReactElement } from 'react'
-import {
-  DetailedExecutionInfoType,
-  TransactionDetails,
-  TransactionInfoType,
-  TransactionSummary,
-  TransactionTokenType,
-} from '@safe-global/safe-gateway-typescript-sdk'
-import { getTransactionDetails, Operation } from '@safe-global/safe-gateway-typescript-sdk'
+import React, { type ReactElement } from 'react'
+import type { TransactionDetails, TransactionSummary } from '@safe-global/safe-gateway-typescript-sdk'
+
+import { Operation } from '@safe-global/safe-gateway-typescript-sdk'
 import { Box, CircularProgress } from '@mui/material'
 
 import TxSigners from '@/components/transactions/TxSigners'
 import Summary from '@/components/transactions/TxDetails/Summary'
 import TxData from '@/components/transactions/TxDetails/TxData'
-import useChainId from '@/hooks/useChainId'
-import useAsync from '@/hooks/useAsync'
 import {
   isAwaitingExecution,
   isModuleExecutionInfo,
@@ -33,14 +26,11 @@ import SignTxButton from '@/components/transactions/SignTxButton'
 import RejectTxButton from '@/components/transactions/RejectTxButton'
 import { DelegateCallWarning, UnsignedWarning } from '@/components/transactions/Warning'
 import Multisend from '@/components/transactions/TxDetails/TxData/DecodedData/Multisend'
-import useSafeInfo from '@/hooks/useSafeInfo'
 import useIsPending from '@/hooks/useIsPending'
 import { isTrustedTx } from '@/utils/transactions'
-import { getProposalId } from '@/services/tx/hsgsuper'
-import { useInitWeb3 } from '@/hooks/wallets/useInitWeb3'
-import { useWeb3ReadOnly } from '@/hooks/wallets/web3'
-import { ethers } from 'ethers'
-import { TimelockStatus, TimelockTx, useNow, useTimelockStamp } from '@/hooks/hsgsuper/hsgsuper'
+import type { TimelockTx } from '@/hooks/hsgsuper/hsgsuper'
+import { shouldSchedule as shouldScheduleHelper } from '@/hooks/hsgsuper/hsgsuper'
+import { TimelockStatus } from '@/hooks/hsgsuper/hsgsuper'
 
 export const NOT_AVAILABLE = 'n/a'
 
@@ -55,6 +45,7 @@ const TxDetailsBlock = ({ txSummary, txDetails, timelockTx }: TxDetailsProps): R
   const isQueue = isTxQueued(txSummary.txStatus)
   const awaitingExecution = isAwaitingExecution(txSummary.txStatus)
   const isScheduled = !!timelockTx && timelockTx.status === TimelockStatus.SCHEDULED
+  const shouldSchedule = !!timelockTx && shouldScheduleHelper(timelockTx)
   const isUnsigned =
     isMultisigExecutionInfo(txSummary.executionInfo) && txSummary.executionInfo.confirmationsSubmitted === 0
 
@@ -119,7 +110,11 @@ const TxDetailsBlock = ({ txSummary, txDetails, timelockTx }: TxDetailsProps): R
 
           {isQueue && !isScheduled && (
             <Box display="flex" alignItems="center" justifyContent="center" gap={1} mt={2}>
-              {awaitingExecution ? <ExecuteTxButton txSummary={txSummary} /> : <SignTxButton txSummary={txSummary} />}
+              {awaitingExecution ? (
+                <ExecuteTxButton txSummary={txSummary} shouldSchedule={shouldSchedule} />
+              ) : (
+                <SignTxButton txSummary={txSummary} />
+              )}
               <RejectTxButton txSummary={txSummary} />
             </Box>
           )}

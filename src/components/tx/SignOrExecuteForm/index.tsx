@@ -1,7 +1,6 @@
-import { type ReactElement, type ReactNode, useState, useContext, useCallback } from 'react'
+import { type ReactElement, type ReactNode, useContext, useCallback } from 'react'
 import madProps from '@/utils/mad-props'
 import DecodedTx from '../DecodedTx'
-import ExecuteCheckbox from '../ExecuteCheckbox'
 import { WrongChainWarning } from '../WrongChainWarning'
 import { useImmediatelyExecutable, useValidateNonce } from './hooks'
 import ExecuteForm from './ExecuteForm'
@@ -11,8 +10,6 @@ import ErrorMessage from '../ErrorMessage'
 import TxChecks from './TxChecks'
 import TxCard from '@/components/tx-flow/common/TxCard'
 import ConfirmationTitle, { ConfirmationTitleTypes } from '@/components/tx/SignOrExecuteForm/ConfirmationTitle'
-import { useAppSelector } from '@/store'
-import { selectSettings } from '@/store/settingsSlice'
 import { RedefineBalanceChanges } from '../security/redefine/RedefineBalanceChange'
 import UnknownContractError from './UnknownContractError'
 import RiskConfirmationError from './RiskConfirmationError'
@@ -63,8 +60,9 @@ export const SignOrExecuteForm = ({
   safeTx: ReturnType<typeof useSafeTx>
   safeTxError: ReturnType<typeof useSafeTxError>
 }): ReactElement => {
-  const { transactionExecution } = useAppSelector(selectSettings)
-  const [shouldExecute, setShouldExecute] = useState<boolean>(transactionExecution)
+  // const { transactionExecution } = useAppSelector(selectSettings)
+  const shouldExecute = false // can't sign and execute with hsg
+  // const [shouldExecute, setShouldExecute] = useState<boolean>(transactionExecution)
   const isCreation = !props.txId
   const isNewExecutableTx = useImmediatelyExecutable() && isCreation
   const isCorrectNonce = useValidateNonce(safeTx)
@@ -121,8 +119,6 @@ export const SignOrExecuteForm = ({
             This transaction will most likely fail. To save gas costs, avoid confirming the transaction.
           </ErrorMessage>
         )}
-
-        {canExecute && !props.onlyExecute && <ExecuteCheckbox onChange={setShouldExecute} />}
 
         <WrongChainWarning />
 

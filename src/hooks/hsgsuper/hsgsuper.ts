@@ -1,15 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useWeb3ReadOnly } from '@/hooks/wallets/web3'
-import {
-  DetailedExecutionInfoType,
-  TransactionDetails,
-  TransactionInfoType,
-  TransactionTokenType,
-} from '@safe-global/safe-gateway-typescript-sdk'
+import type { TransactionDetails } from '@safe-global/safe-gateway-typescript-sdk'
+import { DetailedExecutionInfoType } from '@safe-global/safe-gateway-typescript-sdk'
 import { findModuleAddress, getProposalId } from '@/services/tx/hsgsuper'
 import hsgsuperAbi from '@/services/tx/contracts/hsgsupermod.abi.json'
 import timelockAbi from '@/services/tx/contracts/timelockcontroller.abi.json'
-import { BigNumber, ethers } from 'ethers'
+import { ethers } from 'ethers'
 import { useSafeSDK } from '@/hooks/coreSDK/safeCoreSDK'
 import { useAppSelector } from '@/store'
 import { selectPendingTxById } from '@/store/pendingTxsSlice'
@@ -56,6 +52,7 @@ export const useTimelockStamp = (
   const safeSdk = useSafeSDK()
 
   const pendingTx = useAppSelector((state) => selectPendingTxById(state, txDetails?.txId ?? ''))
+  const pendingTxExists = pendingTx != undefined
 
   useEffect(() => {
     if (!txDetails) {
@@ -108,11 +105,10 @@ export const useTimelockStamp = (
       const timelockAdd: string = await hsgsuper.timelock()
       const timelock = new ethers.Contract(timelockAdd, timelockAbi, provider)
       const timestamp = await timelock.getTimestamp(proposalId)
-      console.log('Timestamp: ', timestamp)
       setTStamp(Number(timestamp.toString()) * 1000)
       setErr(undefined)
     })
-  }, [txDetails, provider, safeSdk, pendingTx == undefined]) // there's probably a better way to guarantee this effect runs after this transaction is processed
+  }, [txDetails, provider, safeSdk, pendingTxExists]) // there's probably a better way to guarantee this effect runs after this transaction is processed
 
   return { timeStamp, proposalId, err }
 }
@@ -165,6 +161,7 @@ export const useTimelockTx = (txDetails: TransactionDetails | undefined): { time
   const now = useNow()
 
   const pendingTx = useAppSelector((state) => selectPendingTxById(state, txDetails?.txId ?? ''))
+  const pendingTxExists = pendingTx != undefined
 
   // gets the canceled transactions
   // useEffect(() => {
@@ -227,12 +224,11 @@ export const useTimelockTx = (txDetails: TransactionDetails | undefined): { time
       const timelock = new ethers.Contract(timelockAdd, timelockAbi, provider)
       const _timestamp = Number((await timelock.getTimestamp(proposalId)).toString()) // ethers contracts return BigNumbers
       const filter = timelock.filters.Cancelled(proposalId)
+      const _now = Date.now()
       // console.log('typeof: ', typeof timestamp)
-      if (now < _timestamp * 1000) {
-        console.log('Setting cancellation event listener: ')
+      if (_now < _timestamp * 1000) {
         // @chase not sure if I have to clean this up just in case
-        timelock.once(filter, (propId) => {
-          console.log('Cancel event ran!')
+        timelock.once(filter, () => {
           setIsCancelled(true)
           setTStamp(undefined)
         })
@@ -251,7 +247,7 @@ export const useTimelockTx = (txDetails: TransactionDetails | undefined): { time
       }
       setErr(undefined)
     })
-  }, [txDetails, provider, safeSdk, pendingTx == undefined]) // there's probably a better way to guarantee this effect runs after this transaction is processed
+  }, [txDetails, provider, safeSdk, pendingTxExists]) // there's probably a better way to guarantee this effect runs after this transaction is processed
 
   if (!proposalId) return { err }
 
@@ -302,4 +298,9 @@ export const useNow = (refreshRate: number = 5000) => {
     }
   })
   return now
+}
+
+// helper to determine whether the transaction should be scheduled based on timelock status
+export const shouldSchedule = (timelockTx: TimelockTx): boolean => {
+  return timelockTx.status === TimelockStatus.NONE || timelockTx.status === TimelockStatus.CANCELLED
 }
