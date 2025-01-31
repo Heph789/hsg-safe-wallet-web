@@ -163,14 +163,12 @@ const _scheduleTransactionContract = async (
   isScheduled: boolean,
   options?: TransactionOptions,
 ): Promise<TransactionResult> => {
-  const inter: ethers.ContractInterface = require('./contracts/hsgsupermod.abi.json')
-
   if (signer) {
   } else {
     console.error("Signer doesn't exist!")
     throw 'No signer'
   }
-  const contract = new ethers.Contract(modAddress, inter, signer)
+  const contract = HsgsupermodFactory.connect(modAddress, signer)
 
   if (options && !options.gasLimit) {
     options.gasLimit = (
